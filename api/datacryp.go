@@ -13,6 +13,8 @@ import (
 	"encoding/hex"
 	"github.com/revittconsulting/datacryp/api/internal/mdbx"
 	"strings"
+	"github.com/spf13/viper"
+	"github.com/revittconsulting/datacryp/api/config"
 )
 
 type IDb interface {
@@ -151,10 +153,17 @@ func keysCountHandler(db IDb) http.HandlerFunc {
 }
 
 func main() {
+	// initialise from config
+	cfg := &config.Config{}
+	err := initializeConfig(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	//db := boltdb.New(dbFile)
+	mdbxFilePath := fmt.Sprintf("%s/%s", cfg.DbFile, "chaindata/mdbx.dat")
+	fmt.Println("mdbxFilePath:", mdbxFilePath)
 
-	mdbxdb := mdbx.New("/Volumes/2TB/datadirs/hermez-testnet/chaindata/mdbx.dat")
+	mdbxdb := mdbx.New(mdbxFilePath)
 
 	r := chi.NewRouter()
 
@@ -165,4 +174,19 @@ func main() {
 	r.Get("/buckets/{bucketName}/values/{value}", searchByValueHandler(mdbxdb))
 
 	log.Fatal(http.ListenAndServe(":8080", r))
+}
+
+func initializeConfig(cfg *config.Config) error {
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return fmt.Errorf("read config file: %w", err)
+		}
+	}
+
+	// set config via env vars
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+	viper.AllowEmptyEnv(true)
+
+	return viper.Unmarshal(cfg)
 }
