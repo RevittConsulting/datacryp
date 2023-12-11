@@ -7,14 +7,15 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/revittconsulting/datacryp/api/pkg/utils"
-	"github.com/revittconsulting/datacryp/api/internal/types"
 	"encoding/hex"
-	"github.com/revittconsulting/datacryp/api/internal/mdbx"
-	"strings"
-	"github.com/spf13/viper"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
 	"github.com/revittconsulting/datacryp/api/config"
+	"github.com/revittconsulting/datacryp/api/internal/mdbx"
+	"github.com/revittconsulting/datacryp/api/internal/types"
+	"github.com/revittconsulting/datacryp/api/pkg/utils"
+	"github.com/spf13/viper"
+	"strings"
 )
 
 type IDb interface {
@@ -166,6 +167,17 @@ func main() {
 	mdbxdb := mdbx.New(mdbxFilePath)
 
 	r := chi.NewRouter()
+
+	cors := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowedHeaders:   []string{"*"},
+		ExposedHeaders:   []string{"*"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	})
+
+	r.Use(cors.Handler)
 
 	r.Get("/buckets", listBucketsHandler(mdbxdb))
 	r.Get("/buckets/{bucketName}/pages/{pageNum}/{pageLen}", getPageHandler(mdbxdb))

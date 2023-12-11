@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Web Frontend</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        button, select, input {
+            margin: 10px 0;
+        }
+
+        pre {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+<h1>Bucket Data Viewer</h1>
+<button id="loadBuckets">Load Buckets</button>
+<select id="bucketList"></select>
+
+<button id="loadCount">Load Count</button>
+<div>
+    <input type="number" id="pageNumber" placeholder="Page Number" min="1" style="margin-right: 5px;">
+    <input type="number" id="resultsNumber" placeholder="Results per Page" min="1" style="margin-right: 5px;">
+    <button id="loadPages">Load Pages</button>
+</div>
+<div>
+    <input type="text" id="keyInput" placeholder="Key Value" style="margin-right: 5px;">
+    <button id="loadKeys">Load Keys</button>
+</div>
+
+<h2>Results:</h2>
+<pre id="result"></pre>
+
+<script>
+    document.getElementById('loadBuckets').addEventListener('click', loadBuckets);
+    document.getElementById('loadCount').addEventListener('click', loadCount);
+    document.getElementById('loadPages').addEventListener('click', loadPages);
+    document.getElementById('loadKeys').addEventListener('click', loadKeys);
+
+    function loadBuckets() {
+        fetch('http://localhost:8080/buckets')
+            .then(response => response.json())
+            .then(buckets => {
+                const select = document.getElementById('bucketList');
+                select.innerHTML = '';
+                buckets.forEach(bucket => {
+                    const option = document.createElement('option');
+                    option.value = bucket;
+                    option.textContent = bucket;
+                    select.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function loadCount() {
+        const bucket = document.getElementById('bucketList').value;
+        fetch(`http://localhost:8080/buckets/${bucket}/count`)
+            .then(response => response.json())
+            .then(result => {
+                document.getElementById('result').textContent = JSON.stringify(result, null, 2);
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function loadPages() {
+        const bucket = document.getElementById('bucketList').value;
+        const pageNumber = document.getElementById('pageNumber').value;
+        const resultsNumber = document.getElementById('resultsNumber').value;
+        fetch(`http://localhost:8080/buckets/${bucket}/pages/${pageNumber}/${resultsNumber}`)
+            .then(response => response.json())
+            .then(result => {
+                document.getElementById('result').textContent = JSON.stringify(result, null, 2);
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function loadKeys() {
+        const bucket = document.getElementById('bucketList').value;
+        const key = document.getElementById('keyInput').value;
+        fetch(`http://localhost:8080/buckets/${bucket}/keys/${key}`)
+            .then(response => response.json())
+            .then(result => {
+                document.getElementById('result').textContent = JSON.stringify(result, null, 2);
+            })
+            .catch(error => console.error('Error:', error));
+    }
+</script>
+</body>
+</html>
