@@ -22,6 +22,7 @@ type IDb interface {
 	Close() error
 	ListBuckets() ([]string, error)
 	CountKeys(bucketName string) (uint64, error)
+	CountKeysOfLength(bucketName string, length uint64) (uint64, []string, error)
 	FindByKey(bucketName string, key []byte) ([]byte, error)
 	FindByValue(bucketName string, value []byte) ([][]byte, error)
 	Read(bucketName string, take, offset uint64) ([]types.KeyValuePair, error)
@@ -153,6 +154,35 @@ func keysCountHandler(db IDb) http.HandlerFunc {
 	}
 }
 
+func keysCountLengthHandler(db IDb, withKeys bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		bucketName := chi.URLParam(r, "bucketName")
+		length, err := strconv.ParseUint(chi.URLParam(r, "length"), 10, 64)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		count, keys, err := db.CountKeysOfLength(bucketName, length)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var response map[string]interface{}
+		if withKeys {
+			response = map[string]interface{}{"count": count, "keys": keys}
+		} else {
+			response = map[string]interface{}{"count": count}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		enc.Encode(response)
+	}
+}
+
 func main() {
 	// initialise from config
 	cfg := &config.Config{}
@@ -182,6 +212,8 @@ func main() {
 	r.Get("/buckets", listBucketsHandler(mdbxdb))
 	r.Get("/buckets/{bucketName}/pages/{pageNum}/{pageLen}", getPageHandler(mdbxdb))
 	r.Get("/buckets/{bucketName}/count", keysCountHandler(mdbxdb))
+	r.Get("/buckets/{bucketName}/count/{length}", keysCountLengthHandler(mdbxdb, false))
+	r.Get("/buckets/{bucketName}/count/{length}/keys", keysCountLengthHandler(mdbxdb, true))
 	r.Get("/buckets/{bucketName}/keys/{key}", lookupByKeyHandler(mdbxdb))
 	r.Get("/buckets/{bucketName}/values/{value}", searchByValueHandler(mdbxdb))
 
